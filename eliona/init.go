@@ -19,7 +19,7 @@ import (
 	"github.com/eliona-smart-building-assistant/go-utils/db"
 )
 
-// InitEliona initialize the app in aliona
+// InitEliona initialize the app in eliona
 func InitEliona(connection db.Connection) error {
 
 	//
@@ -27,5 +27,4 @@ func InitEliona(connection db.Connection) error {
 	//
 
 	return nil
-
 }

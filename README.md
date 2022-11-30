@@ -1,5 +1,5 @@
-# App Template
-This [template](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template) can be used to create an app stub for an [Eliona](https://www.eliona.io/) enviroment.
+# Bitcoin Rate app
+This application was created from [template](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template) and can be used with [Eliona](https://www.eliona.io/) enviroment.
 
 
 ## Configuration
@@ -12,69 +12,70 @@ The app needs environment variables and database tables for configuration. To ed
 To start and initialize an app in an Eliona environment, the app have to registered in Eliona. For this, an entry in the database table `public.eliona_app` is necessary.
 
 
-### Environment variables
+### Environment variables ###
 
-<mark>Todo: Describe further environment variables tables the app needs for configuration</mark>
+#### API_ENDPOINT
+The `APPNAME` MUST be set to `bitcoin`. Some resources use this name to identify the app inside an Eliona environment. For running as a Docker container inside an Eliona environment, the `APPNAME` have to set in the [Dockerfile](Dockerfile). If the app runs outside an Eliona environment the `APPNAME` must be set explicitly.
 
+```bash
+export APPNAME=bitcoin
+```
 
-- `APPNAME`: must be set to `template`. Some resources use this name to identify the app inside an Eliona environment.
+#### CONNECTION_STRING
 
-- `CONNECTION_STRING`: configures the [Eliona database](https://github.com/eliona-smart-building-assistant/go-eliona/tree/main/db). Otherwise, the app can't be initialized and started. (e.g. `postgres://user:pass@localhost:5432/iot`)
+The `CONNECTION_STRING` variable configures the [Eliona database](https://github.com/eliona-smart-building-assistant/go-eliona/tree/main/db). If the app runs as a Docker container inside an Eliona environment, the environment must provide this variable. If you run the app standalone you must set this variable. Otherwise, the app can't be initialized and started.
 
-- `API_ENDPOINT`:  configures the endpoint to access the [Eliona API v2](https://github.com/eliona-smart-building-assistant/eliona-api). Otherwise, the app can't be initialized and started. (e.g. `http://api-v2:3000/v2`)
+```bash
+export CONNECTION_STRING=postgres://user:pass@localhost:5432/iot
+```
 
-- `API_TOKEN`: defines the secret to authenticate the app and access the API. 
+#### API_ENDPOINT
 
-- `API_SERVER_PORT`(optional): define the port the API server listens. The default value is Port `3000`. <mark>Todo: Decide if the app needs its own API. If so, an API server have to implemented and the port have to be configurable.</mark>
+The `API_ENDPOINT` variable configures the endpoint to access the [Eliona API](https://github.com/eliona-smart-building-assistant/eliona-api). If the app runs as a Docker container inside an Eliona environment, the environment must provide this variable. If you run the app standalone you must set this variable. Otherwise, the app can't be initialized and started.
 
-- `DEBUG_LEVEL`(optional): defines the minimum level that should be [logged](https://github.com/eliona-smart-building-assistant/go-eliona/tree/main/log). Not defined the default level is `info`.
+```bash
+export API_ENDPOINT=http://localhost:8082/v2
+```
+
+#### DEBUG_LEVEL (optional)
+
+The `DEBUG_LEVEL` variable defines the minimum level that should be [logged](https://github.com/eliona-smart-building-assistant/go-eliona/tree/main/log). Not defined the default level is `info`.
+
+```bash
+export LOG_LEVEL=debug # optionally, default is 'info'
+```
+
+#### Example - Environment variables 
+![img.png](environment_variables.png)
+
 
 ### Database tables ###
 
-<mark>Todo: Describe the database objects the app needs for configuration</mark>
+The app requires some configuration data that remains in the database. To do this, the app creates its own database schema `bitcoin` during initialization. The data in this schema should be made editable by eliona frontend. This allows the app to be configured by the user without direct database access.
 
-<mark>Todo: Decide if the app uses its own data and which data should be accessible from outside the app. This is always the case with configuration data. If so, the app needs its own API server to provide access to this data. To define the API use an openapi.yaml file and generators to build the server stub.</mark>
+A good practice is to initialize the app configuration with [default values](sql/defaults.sql). This allows the user to see how what needs to be configured.
 
-The app requires configuration data that remains in the database. To do this, the app creates its own database schema `template` during initialization. To modify and handle the configuration data the app provides an API access. Have a look at the [API specification](https://eliona-smart-building-assistant.github.io/open-api-docs/?https://raw.githubusercontent.com/eliona-smart-building-assistant/app-template/develop/openapi.yaml) how the configuration tables should be used.
+In detail, you need the following configuration data in table `bitcoin.configuration (name, value)`.
 
-- `template.example_table`: <mark>Todo: Describe the database table in short.</mark>
-
-**Generation**: to generate access method to database see Generation section below.
-
-
-## References
-
-### App API ###
-
-The app provides its own API to access configuration data and other functions. The full description of the API is defined in the `openapi.yaml` OpenAPI definition file.
-
-- [API Reference](https://eliona-smart-building-assistant.github.io/open-api-docs/?https://raw.githubusercontent.com/eliona-smart-building-assistant/app-template/develop/openapi.yaml) shows Details of the API
-
-**Generation**: to generate api server stub see Generation section below.
-
-
-### Eliona ###
-
-<mark>Todo: Describe all the data the app writes to eliona</mark>
-
-
-## Tools
-
-### Generate API server stub ###
-
-For the API server the [OpenAPI Generator](https://openapi-generator.tech/docs/generators/openapi-yaml) for go-server is used to generate a server stub. The easiest way to generate the server files is to use one of the predefined generation script which use the OpenAPI Generator Docker image.
-
-```
-.\generate-api-server.cmd # Windows
-./generate-api-server.sh # Linux
+#### Example - settings in the DB
+```sql
+-- bitcoin.configuration (name, value)
+('endpoint', 'https://api.coindesk.com/v1/bpi/currentprice.json') -- where is the API located
+('polling_interval', '10') -- with interval in seconds is used to poll the API 
 ```
 
-### Generate Database access ###
+In order to define the currencies which rates are to be read, an entry in the table `bitcoin.currencies (code, description, proj_id)` is required. Each rate is later mapped with an asset in eliona.
 
-For the database access [SQLBoiler](https://github.com/volatiletech/sqlboiler) is used. The easiest way to generate the database files is to use one of the predefined generation script which use the SQLBoiler implementation. Please note that the database connection in the `sqlboiler.toml` file have to be configured.
 
+## API Reference
+
+The bitcoin-rate app grabs bitcoin rate from [coindesk](https://api.coindesk.com/v1/bpi/currentprice.json) web service and writes these data to eliona as heap data of assets. The heap data is separated in `bitcoin.Input`, `bitcoin.Info` and `bitcoin.Status` heaps. These structures are used to write the heap data.
+
+```json
+{"code": "USD", "rate": 16793.8472}
+{"daytime": "Nov 30, 2022 08:58:00 UTC"}
+{"comment": "United States Dollar"}
 ```
-.\generate-db.cmd # Windows
-./generate-db.sh # Linux
-```
+
+In eliona these heaps are handled as `bitcoin_rate` asset type with appropriate attributes created during the [initialization](init/init.sql).
 
