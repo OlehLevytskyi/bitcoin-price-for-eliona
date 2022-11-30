@@ -22,13 +22,12 @@ import (
 	"github.com/eliona-smart-building-assistant/go-utils/log"
 	"hailo/conf"
 	"hailo/eliona"
-	"time"
 )
 
 // The main function starts the app by starting all services necessary for this app and waits
 // until all services are finished.
 func main() {
-	log.Info("Template", "Starting the app.")
+	log.Info("Bitcoin rate", "Starting the app.")
 
 	// Necessary to close used init resources, because db.Pool() is used in this app.
 	defer db.ClosePool()
@@ -37,14 +36,14 @@ func main() {
 	app.Init(db.Pool(), app.AppName(),
 		app.ExecSqlFile("conf/init.sql"),
 		conf.InitConfiguration,
-		eliona.InitEliona,
+		conf.InitCurrencies,
+		eliona.InitAssetType,
 	)
 
 	// Starting the service to collect the data for each configured Hailo Smart Hub.
 	common.WaitFor(
-		common.Loop(doAnything, time.Second),
-		listenApiRequests,
+		common.Loop(CollectData, conf.PollingInterval()),
 	)
 
-	log.Info("Template", "Terminate the app.")
+	log.Info("Bitcoin rate", "Terminate the app.")
 }

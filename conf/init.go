@@ -21,11 +21,44 @@ import (
 
 // InitConfiguration initialize the configuration of the app
 func InitConfiguration(connection db.Connection) error {
+	err := Set(connection, "endpoint", "https://api.coindesk.com/v1/bpi/currentprice.json")
+	if err != nil {
+		return err
+	}
+	err = Set(connection, "polling_interval", "10")
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
-	//
-	// Todo: do anything which is necessary to initialize the app like creating text data to demonstrate the configuration
-	//
+// InitCurrencies adds example assets for currencies USD, GBP and EUR.
+// This should be made editable by eliona frontend.
+func InitCurrencies(connection db.Connection) error {
+
+	err := InsertCurrency(connection, Currency{
+		Code:        "USD",
+		Description: "United States Dollar",
+	})
+	if err != nil {
+		return err
+	}
+
+	err = InsertCurrency(connection, Currency{
+		Code:        "GBP",
+		Description: "British Pound Sterling",
+	})
+	if err != nil {
+		return err
+	}
+
+	err = InsertCurrency(connection, Currency{
+		Code:        "EUR",
+		Description: "Euro",
+	})
+	if err != nil {
+		return err
+	}
 
 	return nil
-
 }
